@@ -1,5 +1,11 @@
 
-""" Implementation of a popular speech separation model.
+""" 
+Lots of this code is adapted from the SpeechBrain Conv-TasNet implementation:
+> https://github.com/speechbrain/speechbrain/blob/develop/speechbrain/lobes/models/conv_tasnet.py
+
+The MaskNet class is configured the same as the MaskNet class in the above link
+
+2022 William Ravenscroft
 """
 import torch
 import torch.nn as nn
@@ -9,9 +15,6 @@ import torch.nn.functional as F
 from speechbrain.processing.signal_processing import overlap_and_add
 from speechbrain.lobes.models.conv_tasnet import GlobalLayerNorm, ChannelwiseLayerNorm, Chomp1d, choose_norm
 from speechbrain.nnet.CNN import Conv1d
-
-from fast_transformers.attention import linear_attention, attention_layer
-from fast_transformers.masking import FullMask, LengthMask
 
 EPS = 1e-8
 
@@ -530,60 +533,6 @@ class DynamicDepthwiseSeparableConv(sb.nnet.containers.Sequential):
             layer_name="conv_1",
         )
 
-class LinearSelfAttention(nn.Module):
-    def __init__(
-        self, 
-        d_model, 
-        d_out=2,
-        num_heads=4, 
-        device='cuda',
-        causal=False
-        ):
-        super(LinearSelfAttention, self).__init__()
-
-        self.linear_r = nn.Linear(d_model, d_out*num_heads)
-
-        self.linear_attn = attention_layer.AttentionLayer(
-            attention = linear_attention.LinearAttention(d_out),
-            d_model=d_out*num_heads,
-            n_heads=num_heads,
-            )
-        
-        self.linear_o = nn.Linear(d_out*num_heads,d_out)
-
-        self.causal = causal
-    
-    def forward(self,x):
-        """
-        Input shape = B x L x N
-        """
-        x = F.relu(self.linear_r(x))
-
-        B, L, N = x.shape
-
-        attn_mask = FullMask(
-            mask=None, 
-            N=L, 
-            M=N, 
-            device=x.device
-            )
-        lens_mask = LengthMask(
-            lengths=torch.ones((B,))*L,
-            device=x.device
-        )
-
-        x = F.relu(self.linear_attn(
-            queries = x,
-            keys = x,
-            values = x,
-            attn_mask = attn_mask,
-            query_lengths = lens_mask,
-            key_lengths = lens_mask
-            ))   # B, L, N
-
-        x = F.softmax(self.linear_o(x),dim=-1)
-
-        return x
         
 
 if __name__ == '__main__':
@@ -626,7 +575,7 @@ if __name__ == '__main__':
         se_kernel_size=20,
         bias=True,
         pool="global",
-        attention_type="la"
+        attention_type="se"
     )
 
     print(x.shape,x[0,0,:3])
