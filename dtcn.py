@@ -4,7 +4,7 @@ Lots of this code is adapted from the SpeechBrain Conv-TasNet implementation:
 > https://github.com/speechbrain/speechbrain/blob/develop/speechbrain/lobes/models/conv_tasnet.py
 
 The MaskNet class is configured the same as the MaskNet class in the above link
-
+2020 SpeechBrain
 2022 William Ravenscroft
 """
 import torch
